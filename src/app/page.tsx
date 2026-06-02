@@ -40,7 +40,7 @@ export default function Home() {
               <Link href="/register">Start training</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/paths">Browse paths</Link>
+              <Link href="/learn">Explore the OWASP Top 10</Link>
             </Button>
           </div>
         </Reveal>
