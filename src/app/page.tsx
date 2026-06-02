@@ -3,72 +3,101 @@ import Link from 'next/link'
 import { BracketLabel } from '@/components/brand/bracket-label'
 import { GridBackdrop } from '@/components/brand/grid-backdrop'
 import { Reveal } from '@/components/brand/reveal'
-import { TerminalFrame } from '@/components/brand/terminal-frame'
+import { SiteHeader } from '@/components/layout/site-header'
+import { HeroVisual } from '@/components/marketing/hero-visual'
 import { Button } from '@/components/ui/button'
+import { getSession } from '@/server/auth/session'
 
-const categories = ['web', 'crypto', 'osint', 'forensics']
+export const dynamic = 'force-dynamic'
 
-export default function Home() {
+const TRACKS = ['web', 'crypto', 'osint', 'forensics', 'reverse eng', 'linux', 'networking']
+
+export default async function Home() {
+  const user = await getSession()
+  const authed = user !== null
+
   return (
-    <main className="relative isolate overflow-hidden">
-      <GridBackdrop />
+    <>
+      <SiteHeader authed={authed} />
 
-      <section className="mx-auto flex min-h-dvh max-w-5xl flex-col justify-center px-6 py-24">
-        <Reveal>
-          <BracketLabel>cyberlearn // training ground</BracketLabel>
-        </Reveal>
+      <main className="relative isolate overflow-hidden">
+        <GridBackdrop />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/2 -z-10 size-[44rem] -translate-x-1/2 rounded-full bg-accent/[0.06] blur-3xl"
+        />
 
-        <Reveal delay={0.06}>
-          <h1 className="mt-6 max-w-3xl font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
-            Learn security by{' '}
-            <span className="text-accent text-accent-glow">capturing flags</span>
-            <span className="cursor-blink" aria-hidden />
-          </h1>
-        </Reveal>
+        <section className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-7xl flex-col px-6">
+          <div className="grid flex-1 items-center gap-14 py-16 lg:grid-cols-2 lg:gap-8">
+            {/* Left — copy */}
+            <div>
+              <Reveal>
+                <BracketLabel>cyberlearn // training ground</BracketLabel>
+              </Reveal>
 
-        <Reveal delay={0.12}>
-          <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Hands-on challenges across web, crypto, OSINT and forensics. Real vulnerability
-            classes, original content, a live leaderboard — and an AI mentor that teaches the{' '}
-            <em className="font-medium not-italic text-foreground">why</em>, never the answer.
-          </p>
-        </Reveal>
+              <Reveal delay={0.06}>
+                <h1 className="mt-6 max-w-xl font-display text-5xl font-bold leading-[1.04] tracking-tight sm:text-6xl">
+                  Master cybersecurity by{' '}
+                  <span className="text-accent text-accent-glow">capturing flags</span>
+                  <span className="cursor-blink" aria-hidden />
+                </h1>
+              </Reveal>
 
-        <Reveal delay={0.18}>
-          <div className="mt-10 flex flex-wrap items-center gap-3">
-            <Button asChild size="lg">
-              <Link href="/register">Start training</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/learn">Explore the OWASP Top 10</Link>
-            </Button>
+              <Reveal delay={0.12}>
+                <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+                  Hands-on labs, guided learning paths, and real challenges across web, crypto,
+                  OSINT and forensics — all in your browser. Track your progress, climb the
+                  leaderboard, and learn the{' '}
+                  <em className="font-medium not-italic text-foreground">why</em> from an AI mentor
+                  that never hands you the answer.
+                </p>
+              </Reveal>
+
+              <Reveal delay={0.18}>
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <Button asChild size="lg">
+                    <Link href={authed ? '/dashboard' : '/register'}>Start Training</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href="/learn">Browse Paths</Link>
+                  </Button>
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.24}>
+                <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs text-muted-foreground">
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-accent">✓</span> No VMs or setup
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-accent">✓</span> 100% original content
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <span className="text-accent">✓</span> Free to start
+                  </li>
+                </ul>
+              </Reveal>
+            </div>
+
+            {/* Right — live capture card */}
+            <Reveal delay={0.2} className="hidden lg:block">
+              <HeroVisual />
+            </Reveal>
           </div>
-        </Reveal>
 
-        <Reveal delay={0.24}>
-          <TerminalFrame label="~/web/idor-01 — submit" className="mt-14 max-w-xl">
-            <p className="text-muted-foreground">
-              <span className="text-accent">$</span> cyberlearn submit{' '}
-              <span className="text-foreground">flag&#123;c0nstant_t1me_w1ns&#125;</span>
-            </p>
-            <p className="mt-2 text-success">[ CAPTURED ] first blood · +250 pts · rank ↑ 3</p>
-          </TerminalFrame>
-        </Reveal>
-
-        <Reveal delay={0.3}>
-          <div className="mt-12 flex flex-wrap gap-x-6 gap-y-3">
-            {categories.map((category) => (
-              <BracketLabel key={category}>{category}</BracketLabel>
-            ))}
-          </div>
-        </Reveal>
-      </section>
-
-      <footer className="mx-auto max-w-5xl px-6 pb-10">
-        <p className="font-mono text-xs text-muted-foreground">
-          cyberlearn v0.1.0 · phase 0 — foundation · built with intent
-        </p>
-      </footer>
-    </main>
+          {/* Tracks strip */}
+          <Reveal delay={0.3}>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border/60 py-6">
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+                tracks
+              </span>
+              {TRACKS.map((t) => (
+                <BracketLabel key={t}>{t}</BracketLabel>
+              ))}
+            </div>
+          </Reveal>
+        </section>
+      </main>
+    </>
   )
 }
