@@ -9,29 +9,30 @@ const skipValidation =
  * Server-side environment, validated once at module load so a missing or
  * malformed variable fails fast and loud instead of at the first request.
  *
- * Variables introduced by later phases are `.optional()` for now and become
- * required in the phase that uses them (see docs/SECURITY.md). A build or CI
- * run without a database can set `SKIP_ENV_VALIDATION=1`.
- *
  * This module is `server-only`: importing it from a Client Component is a build
- * error, so secrets can never leak into the client bundle.
+ * error, so secrets can never leak into the client bundle. A build/CI run
+ * without a database can set `SKIP_ENV_VALIDATION=1`.
  */
 const serverSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   APP_URL: z.string().url().default('http://localhost:3000'),
 
-  // Database (Neon) — required at runtime.
+  // Database (Neon).
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url().optional(),
 
-  // Phase 1 — auth & email.
-  JWT_ACCESS_SECRET: z.string().min(32).optional(),
-  JWT_REFRESH_SECRET: z.string().min(32).optional(),
-  FLAG_PEPPER: z.string().min(16).optional(),
+  // Auth — required from Phase 1 on.
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
+
+  // Email + OAuth — wired as those integrations land (Phase 1).
   GITHUB_OAUTH_CLIENT_ID: z.string().optional(),
   GITHUB_OAUTH_CLIENT_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+
+  // Flag pepper — required in Phase 2 (challenges).
+  FLAG_PEPPER: z.string().min(16).optional(),
 
   // Rate limiting (Upstash Redis).
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -47,12 +48,24 @@ const serverSchema = z.object({
 
 export type ServerEnv = z.infer<typeof serverSchema>
 
+/**
+ * Treat empty-string env vars as unset, so a stray `KEY=` in a `.env`
+ * (e.g. copied from `.env.example`) doesn't fail an otherwise-optional check.
+ */
+function clean(source: NodeJS.ProcessEnv): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {}
+  for (const [key, value] of Object.entries(source)) {
+    out[key] = value === '' ? undefined : value
+  }
+  return out
+}
+
 function loadEnv(): ServerEnv {
   if (skipValidation) {
     return process.env as unknown as ServerEnv
   }
 
-  const parsed = serverSchema.safeParse(process.env)
+  const parsed = serverSchema.safeParse(clean(process.env))
   if (!parsed.success) {
     console.error(
       '❌ Invalid server environment variables:',

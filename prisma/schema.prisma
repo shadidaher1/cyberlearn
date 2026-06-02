@@ -1,9 +1,8 @@
 // CyberLearn — Prisma schema
 //
-// Phase 0 ships a minimal, forward-looking core so we can connect to Neon and
-// run migrations. The full data model (LearningPath, Category, Challenge, Hint,
-// Submission, Solve, Score, Achievement, …) is designed in docs/SCHEMA.md and
-// implemented in Phase 2 (feat/challenges).
+// Phase 1 (feat/auth): users + authentication. The learning-domain models
+// (Category, LearningPath, Challenge, Hint, Submission, Solve, Score,
+// Achievement, …) are designed in docs/SCHEMA.md and arrive in Phase 2.
 
 generator client {
   provider = "prisma-client-js"
@@ -21,14 +20,72 @@ enum Role {
   ADMIN
 }
 
+enum VerificationKind {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
   username      String    @unique
+  // argon2id hash; null for OAuth-only accounts that never set a password.
+  passwordHash  String?
   role          Role      @default(USER)
   emailVerified DateTime?
+  avatarUrl     String?
+  bio           String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  oauthAccounts      OAuthAccount[]
+  refreshTokens      RefreshToken[]
+  verificationTokens VerificationToken[]
+
   @@map("users")
+}
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  provider          String // e.g. "github"
+  providerAccountId String
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 of the raw token; the raw value only ever lives in the cookie.
+  tokenHash String    @unique
+  // Rotation chain — reuse of an already-rotated token revokes the whole family.
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model VerificationToken {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 of the raw token; single-use and expiring.
+  tokenHash  String           @unique
+  kind       VerificationKind
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([userId])
+  @@map("verification_tokens")
 }

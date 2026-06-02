@@ -12,6 +12,9 @@ export function ok<T extends JsonObject>(data: T, init?: ResponseInit) {
   return NextResponse.json({ ok: true, ...data }, init)
 }
 
-export function fail(status: number, code: string, message: string) {
-  return NextResponse.json({ ok: false, error: { code, message } }, { status })
+export function fail(status: number, code: string, message: string, details?: unknown) {
+  return NextResponse.json(
+    { ok: false, error: { code, message, ...(details !== undefined ? { details } : {}) } },
+    { status },
+  )
 }
