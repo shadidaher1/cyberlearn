@@ -22,7 +22,7 @@ All endpoints are Next.js route handlers under `src/app/api/**/route.ts`.
 | ------ | ------------- | ------ | ---------------------------------------- |
 | GET    | `/api/health` | public | `{ ok, status, database, latencyMs }`; `503` if DB down |
 
-## Auth — Phase 1
+## Auth — Phase 1 ✅ (password flow implemented; OAuth + email pending)
 
 | Method | Path                          | Auth   | Body / notes                                    |
 | ------ | ----------------------------- | ------ | ----------------------------------------------- |

@@ -8,10 +8,10 @@ change that affects it.
 
 ## 1. Input validation & error handling
 
-- 📋 Validate **all** input with **Zod** at the route-handler boundary; reject
+- ✅ Validate **all** input with **Zod** at the route-handler boundary; reject
   with the correct status (`400` malformed, `401`/`403` authz, `404`, `409`
   conflict, `422` semantic, `429` rate-limited).
-- 📋 Zod schemas live in `src/schemas` and are shared between client forms and
+- ✅ Zod schemas live in `src/schemas` and are shared between client forms and
   handlers — one source of truth, no drift.
 - ✅ **Never leak internals.** No stack traces, Prisma errors, or env values in
   responses. The client error boundary (`src/app/error.tsx`) logs server-side
@@ -20,24 +20,27 @@ change that affects it.
 
 ## 2. Authentication & sessions (Phase 1)
 
-- 📋 Passwords hashed with **argon2id** (`@node-rs/argon2`, Vercel-safe prebuilt
-  binaries). Never MD5/SHA/bcrypt-only.
-- 📋 **JWT** via `jose` (edge-compatible): short-lived **access** token + a
-  longer-lived **rotating refresh** token. Refresh rotation detects reuse
-  (stolen-token → revoke the whole token family).
-- 📋 Tokens in **httpOnly + Secure + SameSite=Lax** cookies. **Never**
-  `localStorage`/`sessionStorage` (XSS-exfiltratable). `Secure` always in prod.
-- 📋 Refresh tokens stored **hashed** (SHA-256) in the DB; the raw token only
-  ever lives in the cookie. A DB leak yields no usable tokens.
+- ✅ Passwords hashed with **argon2id** (`@node-rs/argon2`). Cost params per OWASP
+  and encoded in the hash, so they can be raised later without invalidating
+  existing hashes. `verifyPassword` never throws (returns `false`).
+- ✅ **JWT** via `jose`: short-lived **access** token (15m) + a longer-lived
+  **rotating refresh** token (30d). Rotation detects reuse — a replayed
+  (already-rotated) token revokes the whole family.
+- ✅ Tokens in **httpOnly + Secure(prod) + SameSite=Lax** cookies. **Never**
+  `localStorage`/`sessionStorage`.
+- ✅ Refresh tokens stored **hashed** (SHA-256) in the DB; the raw token only ever
+  lives in the cookie. A DB leak yields no usable tokens.
+- ✅ **No login enumeration:** unknown email and wrong password both return a
+  generic `401`, with a constant-time dummy argon2 verify so timing can't reveal
+  whether the account exists. _(Registration intentionally reports email/username
+  conflicts for UX — a lower-value vector mitigated by rate-limiting; password
+  reset will be generic in its sub-step.)_
+- ✅ Centralised `getSession` / `requireUser` / `requireAdmin` in `src/server/auth`.
+  Authorization is enforced in the service layer, not the UI.
 - 📋 **GitHub OAuth:** validate the `state` parameter (CSRF), keep the client
   secret server-side, exchange the code server-side only.
 - 📋 **Email verification & password reset** tokens: random, **hashed** at rest,
   **single-use** (`consumedAt`), **expiring**. Lookups by hash.
-- 📋 **No user enumeration:** login, registration, and password-reset return
-  **generic** messages and comparable timing regardless of whether the account
-  exists. Always run a dummy hash verify on unknown users to equalise timing.
-- 📋 Centralised `getSession` / `requireUser` / `requireAdmin` helpers in
-  `src/server/auth`. Authorization is checked in the service layer, not the UI.
 
 ## 3. Flag handling (Phase 2) — the core invariant
 
@@ -83,9 +86,11 @@ change that affects it.
 
 ## 6. Rate limiting (Phases 1, 2, 6)
 
-- 📋 **Upstash Redis** (durable; serverless has no shared in-memory state) via
+- 🔧 **Upstash Redis** (durable; serverless has no shared in-memory state) via
   `@upstash/ratelimit`. Applied to: auth endpoints (login, register, reset),
-  flag submission (per user + per challenge), and the AI mentor.
+  flag submission (per user + per challenge), and the AI mentor. _An in-memory
+  dev fallback (`src/lib/rate-limit.ts`) is live on register/login today; it
+  swaps to Upstash, behind the same async interface, once `UPSTASH_*` is set._
 - 📋 Keyed by user id where authenticated, else by a hashed IP. Return `429` with
   `Retry-After`.
 
