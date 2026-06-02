@@ -1,11 +1,14 @@
 import { fail, ok } from '@/lib/api'
 import { setAuthCookies } from '@/lib/cookies'
 import { prisma } from '@/lib/db'
+import { env } from '@/lib/env'
 import { rateLimit } from '@/lib/rate-limit'
 import { registerSchema } from '@/schemas/auth'
 import { authErrorResponse, clientIp } from '@/server/auth/http'
 import { registerUser } from '@/server/auth/register'
 import { issueSession } from '@/server/auth/tokens'
+import { createVerificationToken } from '@/server/auth/verification'
+import { sendVerificationEmail } from '@/server/email/mailer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,6 +33,15 @@ export async function POST(request: Request) {
     const user = await registerUser(prisma, parsed.data)
     const tokens = await issueSession(prisma, { id: user.id, role: user.role })
     await setAuthCookies(tokens.accessToken, tokens.refreshToken)
+
+    // Best-effort verification email — never fail registration if it can't send.
+    try {
+      const token = await createVerificationToken(prisma, user.id, 'EMAIL_VERIFY')
+      await sendVerificationEmail(user.email, `${env.APP_URL}/verify-email?token=${token}`)
+    } catch (err) {
+      console.error('[auth] failed to send verification email:', err)
+    }
+
     return ok({ user }, { status: 201 })
   } catch (err) {
     return authErrorResponse(err)
