@@ -38,6 +38,14 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between">
           <BracketLabel>dashboard</BracketLabel>
           <div className="flex items-center gap-4">
+            {user.role === 'ADMIN' && (
+              <Link
+                href="/admin"
+                className="font-mono text-xs text-accent hover:underline"
+              >
+                admin →
+              </Link>
+            )}
             <Link
               href="/leaderboard"
               className="font-mono text-xs text-muted-foreground hover:text-accent"
