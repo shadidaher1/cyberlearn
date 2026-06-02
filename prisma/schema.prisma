@@ -1,8 +1,9 @@
 // CyberLearn — Prisma schema
 //
-// Phase 1 (feat/auth): users + authentication. The learning-domain models
-// (Category, LearningPath, Challenge, Hint, Submission, Solve, Score,
-// Achievement, …) are designed in docs/SCHEMA.md and arrive in Phase 2.
+// Phase 1 (feat/auth): users + authentication.
+// Phase 2 (feat/challenges): the learning domain — categories, paths,
+// challenges, flags, submissions, solves, scores, achievements.
+// Full rationale in docs/SCHEMA.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -25,6 +26,20 @@ enum VerificationKind {
   PASSWORD_RESET
 }
 
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+  INSANE
+}
+
+enum AchievementKind {
+  FIRST_BLOOD
+  CATEGORY_MASTERY
+  MILESTONE
+  STREAK
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -41,6 +56,12 @@ model User {
   oauthAccounts      OAuthAccount[]
   refreshTokens      RefreshToken[]
   verificationTokens VerificationToken[]
+
+  authoredChallenges Challenge[]       @relation("ChallengeAuthor")
+  submissions        Submission[]
+  solves             Solve[]
+  score              Score?
+  achievements       UserAchievement[]
 
   @@map("users")
 }
@@ -88,4 +109,162 @@ model VerificationToken {
 
   @@index([userId])
   @@map("verification_tokens")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  icon        String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  paths      LearningPath[]
+  challenges Challenge[]
+
+  @@map("categories")
+}
+
+model LearningPath {
+  id         String     @id @default(cuid())
+  slug       String     @unique
+  title      String
+  summary    String
+  categoryId String
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  difficulty Difficulty @default(EASY)
+  order      Int        @default(0)
+  published  Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  challenges Challenge[]
+
+  @@index([categoryId])
+  @@map("learning_paths")
+}
+
+model Challenge {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  // Markdown lesson — original content authored through the admin dashboard.
+  description String
+  // e.g. "A01:2021 — Broken Access Control"; null for non-OWASP categories.
+  owaspRef    String?
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  pathId      String?
+  path        LearningPath? @relation(fields: [pathId], references: [id], onDelete: SetNull)
+  orderInPath Int?
+  difficulty  Difficulty    @default(EASY)
+  points      Int           @default(50)
+  // HMAC-SHA256(normalize(flag), FLAG_PEPPER) — never plaintext, never returned.
+  flagHash    String
+  authorId    String?
+  author      User?         @relation("ChallengeAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  published   Boolean       @default(false)
+  releasedAt  DateTime?
+  // Denormalized count for fast listing.
+  solveCount  Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  hints       Hint[]
+  submissions Submission[]
+  solves      Solve[]
+
+  @@index([categoryId])
+  @@index([pathId])
+  @@map("challenges")
+}
+
+model Hint {
+  id          String    @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  order       Int       @default(0)
+  content     String
+  // Points deducted from the award when this hint is unlocked.
+  cost        Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([challengeId])
+  @@map("hints")
+}
+
+model Submission {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  // We log only the outcome — never the raw attempt (could be a near-flag).
+  correct     Boolean
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, challengeId, createdAt])
+  @@map("submissions")
+}
+
+// The integrity anchor: one correct solve per (user, challenge), enforced by
+// the unique constraint. Points are awarded only when a Solve row is created.
+model Solve {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId  String
+  challenge    Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  points       Int
+  isFirstBlood Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@unique([userId, challengeId])
+  @@index([challengeId])
+  @@map("solves")
+}
+
+// Denormalized per-user aggregate; updated transactionally with each Solve.
+// Indexed for the leaderboard's deterministic ordering.
+model Score {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points      Int       @default(0)
+  solves      Int       @default(0)
+  lastSolveAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([points, lastSolveAt])
+  @@map("scores")
+}
+
+model Achievement {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  name        String
+  description String
+  icon        String?
+  kind        AchievementKind
+  createdAt   DateTime        @default(now())
+
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  // Optional context — e.g. the challenge that triggered a First Blood.
+  challengeId   String?
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
 }
