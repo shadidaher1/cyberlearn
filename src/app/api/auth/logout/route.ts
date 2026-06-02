@@ -8,7 +8,12 @@ export const dynamic = 'force-dynamic'
 
 export async function POST() {
   const { refreshToken } = await readAuthCookies()
-  await revokeSession(prisma, refreshToken)
+  try {
+    await revokeSession(prisma, refreshToken)
+  } catch (err) {
+    // Best-effort revoke; we always clear the client's cookies regardless.
+    console.error('[auth] logout revoke failed:', err)
+  }
   await clearAuthCookies()
   return ok({ loggedOut: true })
 }
