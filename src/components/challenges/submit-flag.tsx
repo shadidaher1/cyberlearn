@@ -9,6 +9,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { submitFlagSchema } from '@/schemas/challenge'
 
+const ACHIEVEMENT_NAMES: Record<string, string> = {
+  'first-blood': 'First Blood',
+  'getting-started': 'Getting Started',
+  centurion: 'Centurion',
+  'owasp-master': 'OWASP Master',
+}
+
+function prettifyAchievement(slug: string): string {
+  return ACHIEVEMENT_NAMES[slug] ?? slug.replace(/-/g, ' ')
+}
+
 type Status = 'idle' | 'wrong' | 'captured' | 'solved'
 
 export function SubmitFlag({
@@ -26,6 +37,7 @@ export function SubmitFlag({
   const [status, setStatus] = useState<Status>(solved ? 'solved' : 'idle')
   const [awarded, setAwarded] = useState<number | null>(null)
   const [firstBlood, setFirstBlood] = useState(false)
+  const [unlocked, setUnlocked] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
 
   if (!authed) {
@@ -52,6 +64,15 @@ export function SubmitFlag({
           {firstBlood ? ' first blood ·' : ''}
           {status === 'captured' && awarded !== null ? ` +${awarded} pts` : ' challenge solved'}
         </p>
+        {unlocked.length > 0 && (
+          <ul className="mt-2 space-y-1">
+            {unlocked.map((slug) => (
+              <li key={slug} className="font-mono text-xs text-accent">
+                ★ achievement unlocked — {prettifyAchievement(slug)}
+              </li>
+            ))}
+          </ul>
+        )}
       </motion.div>
     )
   }
@@ -76,6 +97,7 @@ export function SubmitFlag({
           setStatus('captured')
           setAwarded(data.awardedPoints ?? 0)
           setFirstBlood(Boolean(data.firstBlood))
+          setUnlocked(Array.isArray(data.newAchievements) ? data.newAchievements : [])
         }
         router.refresh()
       } else {
