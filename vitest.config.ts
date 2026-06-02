@@ -15,6 +15,7 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
       JWT_ACCESS_SECRET: 'test_access_secret_at_least_32_chars_long_xx',
       JWT_REFRESH_SECRET: 'test_refresh_secret_at_least_32_chars_long_x',
+      FLAG_PEPPER: 'test_flag_pepper_at_least_16_chars',
     },
   },
   resolve: {

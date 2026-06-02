@@ -31,8 +31,8 @@ const serverSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 
-  // Flag pepper — required in Phase 2 (challenges).
-  FLAG_PEPPER: z.string().min(16).optional(),
+  // Flag pepper — required from Phase 2 (challenges) on.
+  FLAG_PEPPER: z.string().min(16),
 
   // Rate limiting (Upstash Redis).
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),

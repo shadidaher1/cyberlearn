@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { LogoutButton } from '@/components/auth/logout-button'
 import { BracketLabel } from '@/components/brand/bracket-label'
 import { GridBackdrop } from '@/components/brand/grid-backdrop'
 import { TerminalFrame } from '@/components/brand/terminal-frame'
+import { Button } from '@/components/ui/button'
 import { getSession } from '@/server/auth/session'
 
 export const metadata: Metadata = { title: 'Dashboard' }
@@ -27,9 +29,12 @@ export default async function DashboardPage() {
           Welcome, <span className="text-accent text-accent-glow">{user.username}</span>
         </h1>
         <p className="mt-2 max-w-prose text-muted-foreground">
-          You&apos;re signed in. The challenge engine lands in the next phase — for now, the door is
-          open and the session is real.
+          You&apos;re signed in. Ready to capture some flags?
         </p>
+
+        <Button asChild size="lg" className="mt-6">
+          <Link href="/learn">Start the OWASP Top 10</Link>
+        </Button>
 
         <TerminalFrame label="~/session" className="mt-10 max-w-md">
           <p className="text-muted-foreground">
