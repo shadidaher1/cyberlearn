@@ -27,5 +27,17 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(200),
 })
 
+/** A bare email — used by resend-verification and forgot-password. */
+export const emailRequestSchema = z.object({ email: emailSchema })
+
+export const verifyEmailSchema = z.object({ token: z.string().min(1).max(256) })
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1).max(256),
+  password: passwordSchema,
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
+export type EmailRequestInput = z.infer<typeof emailRequestSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
