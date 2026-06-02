@@ -1,0 +1,34 @@
+// CyberLearn — Prisma schema
+//
+// Phase 0 ships a minimal, forward-looking core so we can connect to Neon and
+// run migrations. The full data model (LearningPath, Category, Challenge, Hint,
+// Submission, Solve, Score, Achievement, …) is designed in docs/SCHEMA.md and
+// implemented in Phase 2 (feat/challenges).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) connection used by Prisma Migrate only.
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  role          Role      @default(USER)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
