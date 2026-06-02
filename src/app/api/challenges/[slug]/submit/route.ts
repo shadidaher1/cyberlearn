@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
 import { submitFlagSchema } from '@/schemas/challenge'
 import { getSession } from '@/server/auth/session'
+import { evaluateAchievements } from '@/server/challenges/achievements'
 import { submitFlag } from '@/server/challenges/submit'
 
 export const runtime = 'nodejs'
@@ -33,11 +34,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     if (result.status === 'NOT_FOUND') return fail(404, 'NOT_FOUND', 'Challenge not found')
     if (result.status === 'WRONG') return ok({ correct: false })
     if (result.status === 'ALREADY_SOLVED') return ok({ correct: true, alreadySolved: true })
-    // CORRECT
+    // CORRECT — award newly-earned achievements (best-effort; award-once at the DB).
+    let newAchievements: string[] = []
+    try {
+      newAchievements = await evaluateAchievements(prisma, user.id, {
+        firstBlood: result.firstBlood,
+      })
+    } catch (err) {
+      console.error('[achievements] evaluation failed:', err)
+    }
     return ok({
       correct: true,
       awardedPoints: result.awardedPoints,
       firstBlood: result.firstBlood,
+      newAchievements,
     })
   } catch (err) {
     console.error('[submit] error:', err)
