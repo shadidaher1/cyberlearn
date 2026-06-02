@@ -71,6 +71,15 @@ export function LoginForm() {
           />
         </FormField>
 
+        <div className="text-right">
+          <Link
+            href="/forgot-password"
+            className="font-mono text-xs text-muted-foreground hover:text-accent"
+          >
+            forgot password?
+          </Link>
+        </div>
+
         {formError ? <p className="font-mono text-sm text-destructive">[ error ] {formError}</p> : null}
 
         <Button type="submit" size="lg" className="w-full" disabled={loading}>
