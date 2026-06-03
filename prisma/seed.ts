@@ -14,6 +14,8 @@ import { hash as argon2hash } from '@node-rs/argon2'
 import { PrismaClient, type Difficulty } from '@prisma/client'
 import { createHmac } from 'node:crypto'
 
+import { CATEGORIES, COURSES } from './content'
+
 const prisma = new PrismaClient()
 
 const FLAG_PEPPER = process.env.FLAG_PEPPER
@@ -89,7 +91,10 @@ Hashing Competition, the variant resistant to both GPU and side-channel attacks)
 as \`flag{algorithm_name}\`.`,
     flag: 'flag{argon2id}',
     hints: [
-      { content: "It's what CyberLearn hashes your password with — check docs/SECURITY.md.", cost: 0 },
+      {
+        content: "It's what CyberLearn hashes your password with — check docs/SECURITY.md.",
+        cost: 0,
+      },
       { content: 'argon2 has three variants: d, i, and the hybrid …', cost: 10 },
     ],
   },
@@ -117,7 +122,10 @@ data instead of concatenating them — as \`flag{two_words_snake_case}\`.`,
     flag: 'flag{parameterized_queries}',
     hints: [
       { content: 'Also called "prepared statements" or "bound parameters".', cost: 0 },
-      { content: 'parameter… + queries (the query carries placeholders, data fills them).', cost: 10 },
+      {
+        content: 'parameter… + queries (the query carries placeholders, data fills them).',
+        cost: 10,
+      },
     ],
   },
   {
@@ -142,7 +150,10 @@ attack it, and how do we mitigate it?" — done at design time — has a name.
 **Submit** it as \`flag{two_words_snake_case}\`.`,
     flag: 'flag{threat_modeling}',
     hints: [
-      { content: 'A structured exercise done on a whiteboard before coding. STRIDE is one method.', cost: 0 },
+      {
+        content: 'A structured exercise done on a whiteboard before coding. STRIDE is one method.',
+        cost: 0,
+      },
       { content: 'threat + …', cost: 20 },
     ],
   },
@@ -237,7 +248,10 @@ before executing updates or dependencies.
 before trusting an artifact — as \`flag{two_words_snake_case}\`.`,
     flag: 'flag{verify_signatures}',
     hints: [
-      { content: 'A signed artifact proves origin + integrity — but only if you check it.', cost: 0 },
+      {
+        content: 'A signed artifact proves origin + integrity — but only if you check it.',
+        cost: 0,
+      },
       { content: 'verify + … (the cryptographic proof attached by the publisher).', cost: 20 },
     ],
   },
@@ -260,7 +274,11 @@ fact forensics. CyberLearn's own admin actions are designed to write exactly thi
 \`flag{two_words_snake_case}\`.`,
     flag: 'flag{audit_logging}',
     hints: [
-      { content: 'An immutable trail of "who did what when" — see the AuditLog model in docs/SCHEMA.md.', cost: 0 },
+      {
+        content:
+          'An immutable trail of "who did what when" — see the AuditLog model in docs/SCHEMA.md.',
+        cost: 0,
+      },
       { content: 'audit + … (also called an "audit trail").', cost: 5 },
     ],
   },
@@ -288,7 +306,10 @@ approved set of destinations and reject everything else.
 blocklist) as \`flag{one_word}\`.`,
     flag: 'flag{allowlist}',
     hints: [
-      { content: 'The opposite of a blocklist/denylist — default deny, permit the known-good.', cost: 0 },
+      {
+        content: 'The opposite of a blocklist/denylist — default deny, permit the known-good.',
+        cost: 0,
+      },
       { content: 'allow + list (one word).', cost: 20 },
     ],
   },
@@ -346,36 +367,7 @@ async function main() {
   console.log(`[seed] admin: ${adminEmail}`)
 
   // ── Categories ──
-  const categories = [
-    {
-      slug: 'web',
-      name: 'Web Security',
-      description: 'Exploit and defend the modern web — the OWASP Top 10 and beyond.',
-      icon: 'globe',
-      order: 1,
-    },
-    {
-      slug: 'crypto',
-      name: 'Cryptography',
-      description: 'Break weak schemes and learn what real cryptographic strength looks like.',
-      icon: 'lock',
-      order: 2,
-    },
-    {
-      slug: 'osint',
-      name: 'OSINT',
-      description: 'Open-source intelligence: find what people leave in the open.',
-      icon: 'search',
-      order: 3,
-    },
-    {
-      slug: 'forensics',
-      name: 'Forensics',
-      description: 'Recover the truth from files, packets, and memory.',
-      icon: 'fingerprint',
-      order: 4,
-    },
-  ]
+  const categories = CATEGORIES
   const catBySlug = new Map<string, string>()
   for (const c of categories) {
     const row = await prisma.category.upsert({ where: { slug: c.slug }, update: c, create: c })
@@ -388,7 +380,8 @@ async function main() {
     where: { slug: 'owasp-top-10' },
     update: {
       title: 'OWASP Top 10',
-      summary: 'The ten most critical web application security risks — learn each by capturing its flag.',
+      summary:
+        'The ten most critical web application security risks — learn each by capturing its flag.',
       categoryId: catBySlug.get('web')!,
       difficulty: 'MEDIUM',
       order: 1,
@@ -397,7 +390,8 @@ async function main() {
     create: {
       slug: 'owasp-top-10',
       title: 'OWASP Top 10',
-      summary: 'The ten most critical web application security risks — learn each by capturing its flag.',
+      summary:
+        'The ten most critical web application security risks — learn each by capturing its flag.',
       categoryId: catBySlug.get('web')!,
       difficulty: 'MEDIUM',
       order: 1,
@@ -441,6 +435,72 @@ async function main() {
     order += 1
   }
   console.log(`[seed] challenges: ${OWASP.length} (OWASP Top 10)`)
+
+  // ── Additional courses (Linux, OSINT, …), driven by the content registry ──
+  for (const course of COURSES) {
+    const categoryId = catBySlug.get(course.categorySlug)
+    if (!categoryId) {
+      throw new Error(`[seed] unknown category for ${course.slug}: ${course.categorySlug}`)
+    }
+
+    const coursePath = await prisma.learningPath.upsert({
+      where: { slug: course.slug },
+      update: {
+        title: course.title,
+        summary: course.summary,
+        categoryId,
+        difficulty: course.difficulty,
+        order: course.order,
+        published: true,
+      },
+      create: {
+        slug: course.slug,
+        title: course.title,
+        summary: course.summary,
+        categoryId,
+        difficulty: course.difficulty,
+        order: course.order,
+        published: true,
+      },
+    })
+
+    let courseOrder = 1
+    for (const ch of course.challenges) {
+      const common = {
+        title: ch.title,
+        description: ch.description,
+        owaspRef: ch.owaspRef ?? null,
+        categoryId,
+        pathId: coursePath.id,
+        orderInPath: courseOrder,
+        difficulty: ch.difficulty,
+        points: ch.points,
+        flagHash: hashFlag(ch.flag),
+        authorId: admin.id,
+        published: true,
+        releasedAt: new Date(),
+      }
+      const challenge = await prisma.challenge.upsert({
+        where: { slug: ch.slug },
+        update: common,
+        create: { slug: ch.slug, ...common },
+      })
+
+      await prisma.hint.deleteMany({ where: { challengeId: challenge.id } })
+      if (ch.hints.length > 0) {
+        await prisma.hint.createMany({
+          data: ch.hints.map((h, i) => ({
+            challengeId: challenge.id,
+            order: i + 1,
+            content: h.content,
+            cost: h.cost,
+          })),
+        })
+      }
+      courseOrder += 1
+    }
+    console.log(`[seed] course: ${course.slug} (${course.challenges.length} challenges)`)
+  }
 
   // ── Achievements ──
   for (const a of ACHIEVEMENTS) {
