@@ -11,9 +11,8 @@
 export type PathKind = 'COURSE' | 'CTF'
 
 const CTF_PATH_SLUGS: ReadonlySet<string> = new Set<string>([
-  // Registered by their own branches:
-  //   'linux-ctf'  → feat/linux-ctf
-  //   'osint-ctf'  → feat/osint-ctf
+  'linux-ctf',
+  // 'osint-ctf' → feat/osint-ctf
 ])
 
 export function pathKind(slug: string): PathKind {
