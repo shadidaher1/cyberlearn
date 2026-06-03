@@ -14,6 +14,13 @@ export const CATEGORIES: SeedCategory[] = [
     order: 1,
   },
   {
+    slug: 'linux',
+    name: 'Linux',
+    description: 'Live on the command line — navigate, search, and administer a Unix system.',
+    icon: 'terminal',
+    order: 2,
+  },
+  {
     slug: 'osint',
     name: 'OSINT',
     description: 'Open-source intelligence: find what people leave in the open.',
