@@ -33,13 +33,16 @@ export default async function ChallengePage({ params }: { params: Promise<{ slug
     <main className="relative isolate min-h-dvh px-6 py-16">
       <GridBackdrop />
       <div className="mx-auto max-w-2xl">
-        <Link href="/learn" className="font-mono text-xs text-muted-foreground hover:text-accent">
+        <Link
+          href={challenge.path ? `/learn/${challenge.path.slug}` : '/learn'}
+          className="font-mono text-xs text-muted-foreground hover:text-accent"
+        >
           ← back to path
         </Link>
 
-        {challenge.owaspRef && (
-          <p className="mt-6 font-mono text-xs uppercase tracking-wider text-accent">
-            {challenge.owaspRef}
+        {(challenge.owaspRef || challenge.path) && (
+          <p className="mt-6 font-mono text-xs tracking-wider text-accent uppercase">
+            {challenge.owaspRef ?? challenge.path?.title}
           </p>
         )}
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{challenge.title}</h1>

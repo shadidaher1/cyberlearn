@@ -23,17 +23,17 @@ Announcement, AuditLog (admin)
 
 ### User
 
-| Field           | Type        | Notes                                              |
-| --------------- | ----------- | -------------------------------------------------- |
-| id              | String cuid | PK                                                 |
-| email           | String      | `@unique`, stored lower-cased                      |
-| username        | String      | `@unique`, public handle                           |
-| passwordHash    | String?     | argon2id; null for OAuth-only accounts             |
-| role            | Role        | `USER` \| `ADMIN`, default `USER`                  |
-| emailVerified   | DateTime?   | null until verified                                |
-| avatarUrl       | String?     |                                                    |
-| bio             | String?     |                                                    |
-| createdAt/updatedAt | DateTime |                                                   |
+| Field               | Type        | Notes                                  |
+| ------------------- | ----------- | -------------------------------------- |
+| id                  | String cuid | PK                                     |
+| email               | String      | `@unique`, stored lower-cased          |
+| username            | String      | `@unique`, public handle               |
+| passwordHash        | String?     | argon2id; null for OAuth-only accounts |
+| role                | Role        | `USER` \| `ADMIN`, default `USER`      |
+| emailVerified       | DateTime?   | null until verified                    |
+| avatarUrl           | String?     |                                        |
+| bio                 | String?     |                                        |
+| createdAt/updatedAt | DateTime    |                                        |
 
 **Why `passwordHash` nullable:** GitHub-OAuth users may never set a password.
 Login logic must branch on credential type.
@@ -46,15 +46,15 @@ needed; if stored, encrypted.
 
 ### RefreshToken (rotating)
 
-| Field      | Notes                                                              |
-| ---------- | ----------------------------------------------------------------- |
-| id         | PK                                                                 |
-| userId     | FK, indexed                                                        |
-| tokenHash  | **SHA-256 of the raw token** — raw token only lives in the cookie |
-| familyId   | groups a rotation chain; reuse of a rotated token revokes the family |
-| expiresAt  | DateTime                                                           |
-| revokedAt  | DateTime?                                                          |
-| createdAt  | DateTime                                                           |
+| Field     | Notes                                                                |
+| --------- | -------------------------------------------------------------------- |
+| id        | PK                                                                   |
+| userId    | FK, indexed                                                          |
+| tokenHash | **SHA-256 of the raw token** — raw token only lives in the cookie    |
+| familyId  | groups a rotation chain; reuse of a rotated token revokes the family |
+| expiresAt | DateTime                                                             |
+| revokedAt | DateTime?                                                            |
+| createdAt | DateTime                                                             |
 
 **Why hashed + family:** a leaked DB exposes no usable tokens; detecting reuse of
 an already-rotated token signals theft → revoke the whole family.
@@ -78,26 +78,40 @@ row, not a migration.
 `id`, `slug @unique`, `title`, `summary`, `categoryId` FK, `difficulty`, `order`,
 `published`. A curated, ordered track within a category.
 
+### Path kind — COURSE vs CTF
+
+The catalog (`/learn`) groups published paths by category and splits each into
+**Courses** (taught lesson-by-lesson) and a secondary **CTF** section (applied,
+flag-only). That distinction is **not** a DB column — it lives in
+`src/config/learning.ts` (`pathKind(slug)`), because the local `.env` points at
+the shared production database and the split is purely presentational. Promote it
+to a `LearningPath.kind` enum if path management ever moves into the admin UI.
+
+Path/challenge seed content lives in versioned modules under `prisma/content/*`
+and is validated **without a database** by `tests/content.test.ts` (unique
+kebab-case slugs, `flag{…}` format, hints, CTF classification). `prisma/seed.ts`
+consumes that registry idempotently alongside the inline OWASP Top 10.
+
 ### Challenge
 
-| Field        | Type        | Notes                                                   |
-| ------------ | ----------- | ------------------------------------------------------- |
-| id           | String cuid | PK                                                      |
-| slug         | String      | `@unique`                                               |
-| title        | String      |                                                         |
-| description  | String      | markdown, original content (authored in admin)          |
-| categoryId   | FK          | indexed                                                 |
-| pathId       | FK?         | nullable; `orderInPath` Int? for sequence               |
-| difficulty   | Difficulty  | `EASY \| MEDIUM \| HARD \| INSANE`                       |
-| points       | Int         | base award (see GAMIFICATION.md)                        |
-| **flagHash** | String      | `HMAC-SHA256(normalize(flag), FLAG_PEPPER)` — never plaintext |
-| flagCaseSensitive | Boolean | normalisation toggle                                   |
-| authorId     | FK          | the admin who wrote it                                  |
-| published    | Boolean     | draft vs live                                           |
-| releasedAt   | DateTime?   | scheduled release                                       |
-| solveCount   | Int         | denormalized, for fast listing                          |
-| fileName/fileUrl/fileSize/fileSha256 | String?/Int? | downloadable artifact (RE/forensics) |
-| createdAt/updatedAt | DateTime |                                                    |
+| Field                                | Type         | Notes                                                         |
+| ------------------------------------ | ------------ | ------------------------------------------------------------- |
+| id                                   | String cuid  | PK                                                            |
+| slug                                 | String       | `@unique`                                                     |
+| title                                | String       |                                                               |
+| description                          | String       | markdown, original content (authored in admin)                |
+| categoryId                           | FK           | indexed                                                       |
+| pathId                               | FK?          | nullable; `orderInPath` Int? for sequence                     |
+| difficulty                           | Difficulty   | `EASY \| MEDIUM \| HARD \| INSANE`                            |
+| points                               | Int          | base award (see GAMIFICATION.md)                              |
+| **flagHash**                         | String       | `HMAC-SHA256(normalize(flag), FLAG_PEPPER)` — never plaintext |
+| flagCaseSensitive                    | Boolean      | normalisation toggle                                          |
+| authorId                             | FK           | the admin who wrote it                                        |
+| published                            | Boolean      | draft vs live                                                 |
+| releasedAt                           | DateTime?    | scheduled release                                             |
+| solveCount                           | Int          | denormalized, for fast listing                                |
+| fileName/fileUrl/fileSize/fileSha256 | String?/Int? | downloadable artifact (RE/forensics)                          |
+| createdAt/updatedAt                  | DateTime     |                                                               |
 
 **Why `flagHash` here and the rationale for HMAC over argon2/plain-SHA:** see
 `docs/SECURITY.md §3`. The flag is **never** selected into any API response —
@@ -120,15 +134,15 @@ persisting near-flags.
 
 ### Solve (the award record — integrity anchor)
 
-| Field        | Notes                                                          |
-| ------------ | -------------------------------------------------------------- |
-| id           | PK                                                             |
-| userId       | FK                                                             |
-| challengeId  | FK                                                             |
-| points       | points actually awarded (after any hint penalty)              |
-| isFirstBlood | Boolean                                                        |
-| createdAt    | DateTime                                                       |
-|              | **`@@unique([userId, challengeId])`** ← solve-once at the DB  |
+| Field        | Notes                                                        |
+| ------------ | ------------------------------------------------------------ |
+| id           | PK                                                           |
+| userId       | FK                                                           |
+| challengeId  | FK                                                           |
+| points       | points actually awarded (after any hint penalty)             |
+| isFirstBlood | Boolean                                                      |
+| createdAt    | DateTime                                                     |
+|              | **`@@unique([userId, challengeId])`** ← solve-once at the DB |
 
 The unique constraint is the guarantee: a second correct submission hits it and
 is handled as "already solved." Points are awarded **only** when a `Solve` row is
