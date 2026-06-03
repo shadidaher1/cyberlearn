@@ -1,4 +1,5 @@
 import { CATEGORIES } from './categories'
+import { linuxAdvanced } from './linux-advanced'
 import { linuxBasics } from './linux-basics'
 import type { SeedCourse } from './types'
 
@@ -11,4 +12,4 @@ export type { SeedCategory, SeedChallenge, SeedCourse } from './types'
  * feat/osint, feat/osint-ctf. The OWASP Top 10 stays inline in the seed (it is
  * already live) and is intentionally not duplicated here.
  */
-export const COURSES: SeedCourse[] = [linuxBasics]
+export const COURSES: SeedCourse[] = [linuxBasics, linuxAdvanced]
