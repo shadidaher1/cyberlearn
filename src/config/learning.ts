@@ -10,10 +10,7 @@
  */
 export type PathKind = 'COURSE' | 'CTF'
 
-const CTF_PATH_SLUGS: ReadonlySet<string> = new Set<string>([
-  'linux-ctf',
-  // 'osint-ctf' → feat/osint-ctf
-])
+const CTF_PATH_SLUGS: ReadonlySet<string> = new Set<string>(['linux-ctf', 'osint-ctf'])
 
 export function pathKind(slug: string): PathKind {
   return CTF_PATH_SLUGS.has(slug) ? 'CTF' : 'COURSE'
